@@ -143,6 +143,7 @@ dependencies = [
  "http",
  "http-body",
  "http-body-util",
+ "percent-encoding",
  "worker",
  "worker-macros",
 ]
