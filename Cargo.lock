@@ -144,6 +144,7 @@ dependencies = [
  "http-body",
  "http-body-util",
  "percent-encoding",
+ "url",
  "worker",
  "worker-macros",
 ]

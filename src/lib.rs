@@ -15,31 +15,26 @@ type HehirResponse = http::Result<
 >;
 
 fn route(req: http::Request<worker::Body>) -> HehirResponse {
-    match req.uri().path() {
-        "/search" => {
-            let query = req.uri().query().unwrap_or("");
+    if req.uri().path() == "/search"
+        && let Some(query) = req.uri().query()
+    {
+        let query = query.replace("+", " ");
+        let query = percent_encoding::percent_decode(query.as_bytes())
+            .decode_utf8()
+            .unwrap();
 
-            hop(query)
-        }
-        _ => http::Response::builder()
-            .status(http::StatusCode::OK)
-            .body(http_body_util::Either::Left(HTML.into())),
+        return hop(&query);
     }
+
+    http::Response::builder()
+        .status(http::StatusCode::OK)
+        .body(http_body_util::Either::Left(HTML.into()))
 }
 
 fn hop(cmd: &str) -> HehirResponse {
     http::Response::builder()
         .status(http::StatusCode::SEE_OTHER)
-        .header(
-            http::header::LOCATION,
-            Command::from(
-                percent_encoding::percent_decode(cmd.as_bytes())
-                    .decode_utf8()
-                    .unwrap()
-                    .as_ref(),
-            )
-            .to_location(),
-        )
+        .header(http::header::LOCATION, Command::from(cmd).to_location())
         .body(http_body_util::Either::Right(http_body_util::Empty::new()))
 }
 
@@ -86,8 +81,14 @@ impl Command {
     fn to_location(&self) -> String {
         match self {
             Command::Github(Some(r)) => format!("https://github.com/{r}"),
-            Command::Github(None) => "https://github.com/".to_string(),
-            Command::Google(q) => format!("https://google.com/search?q={q}"),
+            Command::Github(None) => "https://github.com".to_string(),
+            Command::Google(q) => {
+                let mut url =
+                    url::Url::parse("https://google.com/search").expect("This URL is valid");
+                url.query_pairs_mut().append_pair("q", q);
+
+                url.into()
+            }
         }
     }
 }
@@ -115,20 +116,33 @@ mod tests {
     fn command_parses_gh() {
         let command: Command = "gh".into();
 
-        assert!(matches!(command, Command::Github(s) if s == None));
+        assert_eq!("https://github.com", command.to_location());
     }
 
     #[test]
     fn command_parses_gh_with_arg() {
         let command: Command = "gh skipkayhil/hehir".into();
 
-        assert!(matches!(command, Command::Github(s) if s == Some("skipkayhil/hehir".to_string())));
+        assert_eq!("https://github.com/skipkayhil/hehir", command.to_location());
     }
 
     #[test]
     fn command_falls_back_to_google() {
         let command: Command = "g skipkayhil/hehir".into();
 
-        assert!(matches!(command, Command::Google(s) if s == "g skipkayhil/hehir"));
+        assert_eq!(
+            "https://google.com/search?q=g+skipkayhil%2Fhehir",
+            command.to_location()
+        );
+    }
+
+    #[test]
+    fn command_encodes_and_decodes_plus() {
+        let command: Command = "plus+plus".into();
+
+        assert_eq!(
+            "https://google.com/search?q=plus%2Bplus",
+            command.to_location()
+        );
     }
 }
