@@ -15,15 +15,24 @@ type HehirResponse = http::Result<
 >;
 
 fn route(req: http::Request<worker::Body>) -> HehirResponse {
-    if req.uri().path() == "/search"
-        && let Some(query) = req.uri().query()
-    {
-        let query = query.replace("+", " ");
-        let query = percent_encoding::percent_decode(query.as_bytes())
-            .decode_utf8()
-            .unwrap();
+    match req.uri().path() {
+        "/search" => {
+            if let Some(query) = req.uri().query() {
+                let query = query.replace("+", " ");
+                let query = percent_encoding::percent_decode(query.as_bytes())
+                    .decode_utf8()
+                    .unwrap();
 
-        return hop(&query);
+                return hop(&query);
+            }
+        }
+        "/opensearch.xml" => {
+            return http::Response::builder()
+                .status(http::StatusCode::OK)
+                .header(http::header::CONTENT_TYPE, "text/xml")
+                .body(http_body_util::Either::Left(opensearch(req.uri()).into()));
+        }
+        _ => (),
     }
 
     http::Response::builder()
@@ -38,10 +47,24 @@ fn hop(cmd: &str) -> HehirResponse {
         .body(http_body_util::Either::Right(http_body_util::Empty::new()))
 }
 
+fn opensearch(uri: &http::uri::Uri) -> String {
+    format!(
+        r#"<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/" xmlns:moz="http://www.mozilla.org/2006/browser/search/">
+  <ShortName>Hehir</ShortName>
+  <Description>A bunny implementation</Description>
+  <InputEncoding>UTF-8</InputEncoding>
+  <Url type="text/html" template="{}://{}/search?{{searchTerms}}"/>
+</OpenSearchDescription>"#,
+        uri.scheme_str().unwrap(),
+        uri.authority().unwrap().as_str()
+    )
+}
+
 const HTML: &str = r#"
 <!DOCTYPE html>
     <head>
         <meta charset="utf-8">
+        <link rel="search" type="application/opensearchdescription+xml" title="Hehir" href="/opensearch.xml" />
         <style>
             body {
                 background: #181818;
