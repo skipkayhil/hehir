@@ -99,7 +99,7 @@ const HTML: &str = r#"
         </p>
 
         <p>
-            A <a href="">bunny</a> implementation.
+            A <a href="https://github.com/ccheever/bunny1">bunny</a> implementation.
         </p>
 
         <h2>installation</h2>
