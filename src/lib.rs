@@ -140,6 +140,16 @@ impl Command {
             }
         }
     }
+
+    fn parse_github(s: &str) -> Self {
+        if s.contains("/") {
+            Self::Github(Some(s.to_string()))
+        } else if let Some(user) = s.strip_prefix("@") {
+            Self::Github(Some(user.to_string()))
+        } else {
+            Self::Github(Some(format!("skipkayhil/{}", s)))
+        }
+    }
 }
 
 impl From<&str> for Command {
@@ -149,7 +159,7 @@ impl From<&str> for Command {
 
         match cmd {
             "gh" => match end {
-                Some(e) => Self::Github(Some(s[(e + 1)..].to_string())),
+                Some(e) => Self::parse_github(&s[(e + 1)..]),
                 None => Self::Github(None),
             },
             _ => Self::Google(s.to_string()),
@@ -169,7 +179,21 @@ mod tests {
     }
 
     #[test]
-    fn command_parses_gh_with_arg() {
+    fn command_parses_gh_with_user() {
+        let command: Command = "gh @skipkayhil".into();
+
+        assert_eq!("https://github.com/skipkayhil", command.to_location());
+    }
+
+    #[test]
+    fn command_parses_gh_with_repo_name() {
+        let command: Command = "gh hehir".into();
+
+        assert_eq!("https://github.com/skipkayhil/hehir", command.to_location());
+    }
+
+    #[test]
+    fn command_parses_gh_with_repo_path() {
         let command: Command = "gh skipkayhil/hehir".into();
 
         assert_eq!("https://github.com/skipkayhil/hehir", command.to_location());
