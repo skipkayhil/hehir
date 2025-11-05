@@ -29,7 +29,10 @@ fn route(req: http::Request<worker::Body>) -> HehirResponse {
         "/opensearch.xml" => {
             return http::Response::builder()
                 .status(http::StatusCode::OK)
-                .header(http::header::CONTENT_TYPE, "text/xml")
+                .header(
+                    http::header::CONTENT_TYPE,
+                    "application/opensearchdescription+xml",
+                )
                 .body(http_body_util::Either::Left(opensearch(req.uri()).into()));
         }
         _ => (),
@@ -79,6 +82,13 @@ const HTML: &str = r#"
             a {
                 color: #9fd5fc;
             }
+            code {
+                background: #2b2e3b;
+                border: 1px solid #474a58;
+                border-radius: 3px;
+                color: #cacedf;
+                padding: 1px 5px;
+            }
         </style>
     </head>
     <body>
@@ -90,6 +100,22 @@ const HTML: &str = r#"
 
         <p>
             A <a href="">bunny</a> implementation.
+        </p>
+
+        <h2>installation</h2>
+
+        An <a href="https://developer.mozilla.org/en-US/docs/Web/XML/Guides/OpenSearch">OpenSearch</a>
+        Description is provided to make it simple to add Hehir as a search engine in your browser.
+
+        <h3>firefox</h3>
+
+        <p>
+        While on this page, start typing in the address bar and select <code>Hehir</code> in the
+        Unified Search dropdown.
+        </p>
+
+        <p>
+        Alternatively, you can right click the address bar and select <code>Add "Hehir"</code>.
         </p>
     </body>
 </html>
